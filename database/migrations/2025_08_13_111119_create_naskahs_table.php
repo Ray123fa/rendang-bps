@@ -18,8 +18,20 @@ return new class extends Migration
             $table->string('pengaju');
             $table->string('judul');
             $table->string('file');
-            $table->enum('status_bps_kota', ['Terkirim', 'Rilis'])->default('Terkirim');
-            $table->enum('status_bps_prov', ['Belum Ditanggapi', 'Ditolak', 'Disetujui'])->default('Belum Ditanggapi');
+            $table->enum('status_bps_kota', [
+                'Terkirim',
+                'Perlu Revisi',
+                'Revisi Diajukan',
+                'Menunggu Rilis',
+                'Rilis'
+            ])->default('Terkirim');
+            $table->enum('status_bps_prov', [
+                'Belum Ditanggapi',
+                'Dalam Review',
+                'Disetujui',
+                'Ditolak',
+            ])->default('Belum Ditanggapi');
+            $table->string('keterangan')->nullable()->default(null);
             $table->timestamps();
             $table->softDeletes();
         });

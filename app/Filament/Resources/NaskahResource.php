@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\NaskahResource\Pages;
-use App\Filament\Resources\NaskahResource\RelationManagers;
 use App\Models\Naskah;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Carbon\Carbon;
@@ -58,32 +57,59 @@ class NaskahResource extends Resource implements HasShieldPermissions
                             ]),
                     ])
                     ->disabled(fn() => !auth()->user()->hasRole('kabkot'))
-                    ->columns(1),
-
-                Forms\Components\Section::make('Status Naskah')
+                    ->columnSpan(1),
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\Select::make('status_bps_kota')
-                            ->label('Status BPS Kota')
-                            ->options([
-                                'Terkirim' => 'Terkirim',
-                                'Rilis' => 'Rilis',
+                        // Section Status (kiri)
+                        Forms\Components\Section::make('Status Naskah')
+                            ->schema([
+                                Forms\Components\Grid::make()
+                                    ->schema([
+                                        Forms\Components\Select::make('status_bps_kota')
+                                            ->label('Status BPS Kota')
+                                            ->options([
+                                                'Terkirim' => 'Terkirim',
+                                                'Perlu Revisi' => 'Perlu Revisi',
+                                                'Revisi Diajukan' => 'Revisi Diajukan',
+                                                'Menunggu Rilis' => 'Menunggu Rilis',
+                                                'Rilis' => 'Rilis',
+                                            ])
+                                            ->default('Terkirim')
+                                            ->required()
+                                            ->disabled(fn() => !auth()->user()->hasRole('kabkot'))
+                                            ->columnSpan(1),
+
+                                        Forms\Components\Select::make('status_bps_prov')
+                                            ->label('Status BPS Provinsi')
+                                            ->options([
+                                                'Belum Ditanggapi' => 'Belum Ditanggapi',
+                                                'Dalam Review' => 'Dalam Review',
+                                                'Disetujui' => 'Disetujui',
+                                                'Ditolak' => 'Ditolak',
+                                            ])
+                                            ->default('Belum Ditanggapi')
+                                            ->required()
+                                            ->disabled(fn() => !auth()->user()->hasRole('super_admin'))
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columns(2)
+                            ]),
+
+                        // Section Keterangan (kanan) - hanya muncul jika ditolak
+                        Forms\Components\Section::make('Keterangan Penolakan')
+                            ->schema([
+                                Forms\Components\Textarea::make('keterangan')
+                                    ->label('Alasan Penolakan')
+                                    ->placeholder('Masukkan alasan penolakan...')
+                                    ->rows(3)
+                                    ->maxLength(255)
+                                    ->columnSpanFull()
                             ])
-                            ->default('Terkirim')
-                            ->required()
-                            ->disabled(fn() => !auth()->user()->hasRole('kabkot')),
-                        Forms\Components\Select::make('status_bps_prov')
-                            ->label('Status BPS Provinsi')
-                            ->options([
-                                'Belum Ditanggapi' => 'Belum Ditanggapi',
-                                'Ditolak' => 'Ditolak',
-                                'Disetujui' => 'Disetujui',
-                            ])
-                            ->default('Belum Ditanggapi')
-                            ->required()
-                            ->disabled(fn() => !auth()->user()->hasRole('super_admin')),
+                            ->visible(fn($get) => $get('status_bps_prov') === 'Ditolak')
+                            ->disabled(fn() => !auth()->user()->hasRole('super_admin'))
                     ])
+                    ->columnSpan(1) // Membagi layout menjadi 2 kolom
                     ->visible(fn($record) => filled($record?->id))
-                    ->columns(2),
             ]);
     }
 
@@ -116,6 +142,9 @@ class NaskahResource extends Resource implements HasShieldPermissions
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
                         'Terkirim' => 'info',
+                        'Perlu Revisi' => 'warning',
+                        'Revisi Diajukan' => 'info',
+                        'Menunggu Rilis' => 'info',
                         'Rilis' => 'success',
                     }),
                 Tables\Columns\TextColumn::make('status_bps_prov')
@@ -123,8 +152,9 @@ class NaskahResource extends Resource implements HasShieldPermissions
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
                         'Belum Ditanggapi' => 'gray',
-                        'Ditolak' => 'danger',
+                        'Dalam Review' => 'info',
                         'Disetujui' => 'success',
+                        'Ditolak' => 'danger',
                     }),
             ])
             ->filters([
@@ -132,14 +162,18 @@ class NaskahResource extends Resource implements HasShieldPermissions
                     ->label('Status BPS Kota')
                     ->options([
                         'Terkirim' => 'Terkirim',
+                        'Perlu Revisi' => 'Perlu Revisi',
+                        'Revisi Diajukan' => 'Revisi Diajukan',
+                        'Menunggu Rilis' => 'Menunggu Rilis',
                         'Rilis' => 'Rilis',
                     ]),
                 Tables\Filters\SelectFilter::make('status_bps_prov')
                     ->label('Status BPS Provinsi')
                     ->options([
                         'Belum Ditanggapi' => 'Belum Ditanggapi',
-                        'Ditolak' => 'Ditolak',
+                        'Dalam Review' => 'Dalam Review',
                         'Disetujui' => 'Disetujui',
+                        'Ditolak' => 'Ditolak',
                     ]),
             ])
             ->actions([

@@ -17,9 +17,10 @@ class Naskah extends Model
         'tgl_disetujui',
         'pengaju',
         'judul',
-        'file', // Tambahkan field baru
+        'file',
         'status_bps_kota',
-        'status_bps_prov'
+        'status_bps_prov',
+        'keterangan',
     ];
 
     protected $casts = [

@@ -4,6 +4,8 @@ namespace App\Filament\Resources\NaskahResource\Pages;
 
 use App\Filament\Resources\NaskahResource;
 use Filament\Actions;
+use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewNaskah extends ViewRecord
@@ -24,8 +26,18 @@ class ViewNaskah extends ViewRecord
                 ->action(function () {
                     $this->record->update([
                         'status_bps_prov' => 'Disetujui', // ganti sesuai kolom di tabel kamu
+                        'status_bps_kota' => 'Menunggu Rilis',
                         'tgl_disetujui' => now(), // Set tanggal disetujui ke tanggal sekarang
                     ]);
+
+                    // Kirim notifikasi ke superadmin
+                    Notification::make()
+                        ->title('Naskah Disetujui')
+                        ->success()
+                        ->send();
+
+                    // Refresh halaman
+                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
                 })
                 ->visible(fn() => $this->record->status_bps_prov === 'Belum Ditanggapi' && auth()->user()->hasRole('super_admin')),
             Actions\Action::make('tolak')
@@ -40,12 +52,24 @@ class ViewNaskah extends ViewRecord
                     \Filament\Forms\Components\Textarea::make('keterangan')
                         ->required()
                         ->placeholder('Masukkan keterangan penolakan... (255 karakter maksimal)')
-                        ->rows(3),
+                        ->rows(3)
+                        ->maxLength(255),
                 ])
-                ->action(function () {
+                ->action(function (array $data) {
                     $this->record->update([
                         'status_bps_prov' => 'Ditolak', // ganti sesuai kolom di tabel kamu
+                        'status_bps_kota' => 'Perlu Revisi',
+                        'keterangan' => $data['keterangan'], // Ambil dari form
                     ]);
+
+                    // Kirim notifikasi ke superadmin
+                    Notification::make()
+                        ->title('Naskah Ditolak')
+                        ->success()
+                        ->send();
+
+                    // Refresh halaman
+                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
                 })
                 ->visible(fn() => $this->record->status_bps_prov === 'Belum Ditanggapi' && auth()->user()->hasRole('super_admin')),
             Actions\Action::make('rilis')
@@ -61,13 +85,68 @@ class ViewNaskah extends ViewRecord
                         'status_bps_kota' => 'Rilis', // ganti sesuai kolom di tabel kamu
                         'tgl_rilis' => now(), // Set tanggal rilis ke tanggal sekarang
                     ]);
+
+                    // Kirim notifikasi ke superadmin
+                    Notification::make()
+                        ->title('Naskah Dirilis')
+                        ->success()
+                        ->send();
+
+                    // Refresh halaman
+                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
                 })
-                // ->visible(fn() => $this->record->status_bps_kota === 'Terkirim' && auth()->user()->hasRole('kabkot')),
                 ->visible(function () {
-                    $condition = $this->record->status_bps_kota === 'Terkirim' && auth()->user()->hasRole('kabkot') && $this->record->status_bps_prov === 'Disetujui';
+                    $condition = auth()->user()->hasRole('kabkot') && $this->record->status_bps_kota === 'Menunggu Rilis' &&  $this->record->status_bps_prov === 'Disetujui';
+                    return $condition;
+                }),
+            Actions\Action::make('kirimRevisi')
+                ->label('Kirim Revisi')
+                ->color('gray')
+                ->icon('heroicon-o-arrow-path')
+                ->form([
+                    FileUpload::make('file_revisi')
+                        ->label('Unggah File Revisi')
+                        ->required()
+                        ->directory('naskah')
+                        ->preserveFilenames()
+                        ->downloadable()
+                        ->openable()
+                        ->acceptedFileTypes([
+                            'image/*', // semua format gambar
+                            'application/pdf',
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+                            'application/vnd.openxmlformats-officedocument.presentationml.presentation', // pptx
+                        ]),
+                ])
+                ->action(function (array $data) {
+                    $this->record->update([
+                        'file' => $data['file_revisi'],
+                        'keterangan' => null,
+                        'status_bps_kota' => 'Revisi Diajukan',
+                        'status_bps_prov' => 'Belum Ditanggapi'
+                    ]);
+
+                    // Kirim notifikasi ke superadmin
+                    Notification::make()
+                        ->title('Revisi Dikirim')
+                        ->success()
+                        ->send();
+
+                    // Refresh halaman
+                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
+                })
+                ->visible(function () {
+                    $condition = auth()->user()->hasRole('kabkot') && $this->record->status_bps_kota === 'Perlu Revisi' &&  $this->record->status_bps_prov === 'Ditolak';
                     return $condition;
                 }),
             Actions\EditAction::make()
+                ->visible(fn() => auth()->user()->hasRole('kabkot')),
+            Actions\DeleteAction::make()
+                ->label('Hapus')
+                ->modalHeading('Hapus Naskah')
+                ->modalDescription(fn($record) => 'Apakah Anda yakin ingin menghapus naskah "' . $record->judul . '"?')
+                ->modalSubmitActionLabel('Ya, Hapus')
                 ->visible(fn() => auth()->user()->hasRole('kabkot')),
         ];
     }
