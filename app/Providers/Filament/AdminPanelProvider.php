@@ -76,7 +76,7 @@ class AdminPanelProvider extends PanelProvider
                     ->shouldShowBrowserSessionsForm()
                     ->shouldShowEditProfileForm(true)
                     ->shouldShowEditPasswordForm(true)
-                    ->shouldShowAvatarForm()
+                    ->shouldShowAvatarForm(false)
             ])
             ->authMiddleware([
                 Authenticate::class,

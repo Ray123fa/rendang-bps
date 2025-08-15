@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\NaskahResource\Pages;
 
 use App\Filament\Resources\NaskahResource;
+use App\Models\Logging;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -28,6 +29,16 @@ class ViewNaskah extends ViewRecord
                         'status_bps_prov' => 'Disetujui', // ganti sesuai kolom di tabel kamu
                         'status_bps_kota' => 'Menunggu Rilis',
                         'tgl_disetujui' => now(), // Set tanggal disetujui ke tanggal sekarang
+                    ]);
+
+                    // Logging
+                    Logging::create([
+                        'user_id'     => auth()->id(),
+                        'naskah_id'   => $this->record->id,
+                        'model'       => 'naskah',
+                        'description' => 'Menyetujui naskah dengan judul: ' . $this->record->judul . ' yang diajukan oleh ' . $this->record->pengaju,
+                        'ip_address'  => request()->ip(),
+                        'user_agent'  => request()->userAgent(),
                     ]);
 
                     // Kirim notifikasi ke superadmin
@@ -62,6 +73,16 @@ class ViewNaskah extends ViewRecord
                         'keterangan' => $data['keterangan'], // Ambil dari form
                     ]);
 
+                    // Logging
+                    Logging::create([
+                        'user_id'     => auth()->id(),
+                        'naskah_id'   => $this->record->id,
+                        'model'       => 'naskah',
+                        'description' => 'Menolak naskah "' . $this->record->judul . '" dengan alasan: ' . $data['keterangan'],
+                        'ip_address'  => request()->ip(),
+                        'user_agent'  => request()->userAgent(),
+                    ]);
+
                     // Kirim notifikasi ke superadmin
                     Notification::make()
                         ->title('Naskah Ditolak')
@@ -84,6 +105,16 @@ class ViewNaskah extends ViewRecord
                     $this->record->update([
                         'status_bps_kota' => 'Rilis', // ganti sesuai kolom di tabel kamu
                         'tgl_rilis' => now(), // Set tanggal rilis ke tanggal sekarang
+                    ]);
+
+                    // Logging
+                    Logging::create([
+                        'user_id'     => auth()->id(),
+                        'naskah_id'   => $this->record->id,
+                        'model'       => 'naskah',
+                        'description' => 'Merilis naskah dengan judul "' . $this->record->judul . '"',
+                        'ip_address'  => request()->ip(),
+                        'user_agent'  => request()->userAgent(),
                     ]);
 
                     // Kirim notifikasi ke superadmin
@@ -127,6 +158,16 @@ class ViewNaskah extends ViewRecord
                         'status_bps_prov' => 'Belum Ditanggapi'
                     ]);
 
+                    // Logging
+                    Logging::create([
+                        'user_id'     => auth()->id(),
+                        'naskah_id'   => $this->record->id,
+                        'model'       => 'naskah',
+                        'description' => 'Mengirimkan revisi naskah dengan judul "' . $this->record->judul . '"',
+                        'ip_address'  => request()->ip(),
+                        'user_agent'  => request()->userAgent(),
+                    ]);
+
                     // Kirim notifikasi ke superadmin
                     Notification::make()
                         ->title('Revisi Dikirim')
@@ -147,7 +188,22 @@ class ViewNaskah extends ViewRecord
                 ->modalHeading('Hapus Naskah')
                 ->modalDescription(fn($record) => 'Apakah Anda yakin ingin menghapus naskah "' . $record->judul . '"?')
                 ->modalSubmitActionLabel('Ya, Hapus')
+                ->after(function ($record) {
+                    Logging::create([
+                        'user_id'     => auth()->id(),
+                        'naskah_id'   => $this->record->id,
+                        'model'       => 'naskah',
+                        'description' => 'Menghapus naskah "' . $record->judul . '"',
+                        'ip_address'  => request()->ip(),
+                        'user_agent'  => request()->userAgent(),
+                    ]);
+                })
                 ->visible(fn() => auth()->user()->hasRole('kabkot')),
+            Actions\Action::make('history')
+                ->label('Lihat History')
+                ->color('gray')
+                ->icon('heroicon-o-clock')
+                ->url(fn() => static::getResource()::getUrl('history', ['record' => $this->record])),
         ];
     }
 }

@@ -40,7 +40,7 @@ class RoleSeeder extends Seeder
 
     private function assignNaskahPermissions($role)
     {
-        $entities = ['naskah'];
+        $entities = ['naskah', 'history::naskah'];
 
         $resourcePermissions = collect($entities)
             ->flatMap(fn($entity) => [

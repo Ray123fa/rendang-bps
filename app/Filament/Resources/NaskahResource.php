@@ -186,6 +186,11 @@ class NaskahResource extends Resource implements HasShieldPermissions
                     ->modalDescription(fn($record) => 'Apakah Anda yakin ingin menghapus naskah "' . $record->judul . '"?')
                     ->modalSubmitActionLabel('Ya, Hapus'),
                 Tables\Actions\RestoreAction::make(),
+                Tables\Actions\Action::make('history')
+                    ->label('Histori')
+                    ->color('info')
+                    ->icon('heroicon-o-clock')
+                    ->url(fn($record) => static::getUrl('history', ['record' => $record->id])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -236,6 +241,7 @@ class NaskahResource extends Resource implements HasShieldPermissions
             'create' => Pages\CreateNaskah::route('/create'),
             'view' => Pages\ViewNaskah::route('/{record}'),
             'edit' => Pages\EditNaskah::route('/{record}/edit'),
+            'history' => Pages\HistoryNaskah::route('/{record}/history'),
         ];
     }
 }
