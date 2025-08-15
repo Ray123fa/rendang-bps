@@ -200,10 +200,11 @@ class ViewNaskah extends ViewRecord
                 })
                 ->visible(fn() => auth()->user()->hasRole('kabkot')),
             Actions\Action::make('history')
-                ->label('Lihat History')
-                ->color('gray')
+                ->label('Histori')
+                ->color('info')
                 ->icon('heroicon-o-clock')
-                ->url(fn() => static::getResource()::getUrl('history', ['record' => $this->record])),
+                ->url(fn() => static::getResource()::getUrl('history', ['record' => $this->record]))
+                ->openUrlInNewTab(),
         ];
     }
 }
