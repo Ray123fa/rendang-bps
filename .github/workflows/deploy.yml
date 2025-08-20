@@ -32,7 +32,6 @@ jobs:
       - name: Deploy
         run: |
           ssh -o StrictHostKeyChecking=no ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-            sudo su &&
             cd ${{ env.PROJECT_DIR }} && git pull origin master &&
             echo 'Deployed successfully!'
           "
