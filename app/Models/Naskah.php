@@ -20,7 +20,6 @@ class Naskah extends Model
         'file',
         'status_bps_kota',
         'status_bps_prov',
-        'keterangan',
     ];
 
     protected $casts = [

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\NaskahResource\Pages;
+use App\Models\Archive;
 use App\Models\Naskah;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Carbon\Carbon;
@@ -14,6 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class NaskahResource extends Resource implements HasShieldPermissions
 {
@@ -45,9 +47,12 @@ class NaskahResource extends Resource implements HasShieldPermissions
                             ->required()
                             ->label('File Naskah')
                             ->directory('naskah')
-                            ->preserveFilenames()
                             ->downloadable()
                             ->openable()
+                            ->getUploadedFileNameForStorageUsing(
+                                fn(TemporaryUploadedFile $file): string =>
+                                now()->format('Ymd_His') . '_' . uniqid() . '.' . $file->getClientOriginalExtension()
+                            )
                             ->acceptedFileTypes([
                                 'image/*', // semua format gambar
                                 'application/pdf',
@@ -60,7 +65,6 @@ class NaskahResource extends Resource implements HasShieldPermissions
                     ->columnSpan(1),
                 Forms\Components\Grid::make()
                     ->schema([
-                        // Section Status (kiri)
                         Forms\Components\Section::make('Status Naskah')
                             ->schema([
                                 Forms\Components\Grid::make()
@@ -93,23 +97,20 @@ class NaskahResource extends Resource implements HasShieldPermissions
                                             ->columnSpan(1),
                                     ])
                                     ->columns(2)
-                            ]),
-
-                        // Section Keterangan (kanan) - hanya muncul jika ditolak
-                        Forms\Components\Section::make('Keterangan Penolakan')
-                            ->schema([
-                                Forms\Components\Textarea::make('keterangan')
-                                    ->label('Alasan Penolakan')
-                                    ->placeholder('Masukkan alasan penolakan...')
-                                    ->rows(3)
-                                    ->maxLength(255)
-                                    ->columnSpanFull()
                             ])
-                            ->visible(fn($get) => $get('status_bps_prov') === 'Ditolak')
-                            ->disabled(fn() => !auth()->user()->hasRole('super_admin'))
                     ])
-                    ->columnSpan(1) // Membagi layout menjadi 2 kolom
-                    ->visible(fn($record) => filled($record?->id))
+                    ->columnSpan(1)
+                    ->visible(fn($record) => filled($record?->id)),
+                Forms\Components\Section::make('Riwayat Penolakan')
+                    ->schema([
+                        Forms\Components\View::make('filament.resources.naskah-resource.partials.history-penolakan')
+                            ->viewData(fn($record) => [
+                                'riwayat' => \App\Models\Archive::where('naskah_id', $record->id)->latest()->get(),
+                            ]),
+                    ])
+                    ->visible(function ($record) {
+                        return filled($record?->id) && request()->routeIs('filament.admin.resources.naskahs.view');
+                    }),
             ]);
     }
 
@@ -179,7 +180,6 @@ class NaskahResource extends Resource implements HasShieldPermissions
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Lihat'),
-                // Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->label('Hapus')
                     ->modalHeading('Hapus Naskah')

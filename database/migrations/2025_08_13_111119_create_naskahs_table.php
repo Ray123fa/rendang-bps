@@ -31,7 +31,6 @@ return new class extends Migration
                 'Disetujui',
                 'Ditolak',
             ])->default('Belum Ditanggapi');
-            $table->string('keterangan')->nullable()->default(null);
             $table->timestamps();
             $table->softDeletes();
         });

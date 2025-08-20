@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\NaskahResource\Pages;
 
 use App\Filament\Resources\NaskahResource;
+use App\Models\Archive;
 use App\Models\Logging;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ViewNaskah extends ViewRecord
 {
@@ -62,15 +64,17 @@ class ViewNaskah extends ViewRecord
                 ->form([
                     \Filament\Forms\Components\Textarea::make('keterangan')
                         ->required()
-                        ->placeholder('Masukkan keterangan penolakan... (255 karakter maksimal)')
+                        ->placeholder('Masukkan keterangan penolakan... (500 karakter maksimal)')
                         ->rows(3)
-                        ->maxLength(255),
+                        ->maxLength(500)
+                        ->reactive()
+                        ->live()
+                        ->hint(fn($state) => strlen($state ?? '') . '/500'),
                 ])
                 ->action(function (array $data) {
                     $this->record->update([
                         'status_bps_prov' => 'Ditolak', // ganti sesuai kolom di tabel kamu
                         'status_bps_kota' => 'Perlu Revisi',
-                        'keterangan' => $data['keterangan'], // Ambil dari form
                     ]);
 
                     // Logging
@@ -81,6 +85,13 @@ class ViewNaskah extends ViewRecord
                         'description' => 'Menolak naskah "' . $this->record->judul . '" dengan alasan: ' . $data['keterangan'],
                         'ip_address'  => request()->ip(),
                         'user_agent'  => request()->userAgent(),
+                    ]);
+
+                    // Archive
+                    Archive::create([
+                        'naskah_id' => $this->record->id,
+                        'file' => $this->record->file,
+                        'keterangan' => $data['keterangan'],
                     ]);
 
                     // Kirim notifikasi ke superadmin
@@ -139,9 +150,12 @@ class ViewNaskah extends ViewRecord
                         ->label('Unggah File Revisi')
                         ->required()
                         ->directory('naskah')
-                        ->preserveFilenames()
                         ->downloadable()
                         ->openable()
+                        ->getUploadedFileNameForStorageUsing(
+                            fn(TemporaryUploadedFile $file): string =>
+                            now()->format('Ymd_His') . '_' . uniqid() . '.' . $file->getClientOriginalExtension()
+                        )
                         ->acceptedFileTypes([
                             'image/*', // semua format gambar
                             'application/pdf',
@@ -153,7 +167,6 @@ class ViewNaskah extends ViewRecord
                 ->action(function (array $data) {
                     $this->record->update([
                         'file' => $data['file_revisi'],
-                        'keterangan' => null,
                         'status_bps_kota' => 'Revisi Diajukan',
                         'status_bps_prov' => 'Belum Ditanggapi'
                     ]);
@@ -182,9 +195,10 @@ class ViewNaskah extends ViewRecord
                     return $condition;
                 }),
             Actions\EditAction::make()
-                ->visible(fn() => auth()->user()->hasRole('kabkot')),
+                ->icon('heroicon-o-pencil-square'),
             Actions\DeleteAction::make()
                 ->label('Hapus')
+                ->icon('heroicon-o-trash')
                 ->modalHeading('Hapus Naskah')
                 ->modalDescription(fn($record) => 'Apakah Anda yakin ingin menghapus naskah "' . $record->judul . '"?')
                 ->modalSubmitActionLabel('Ya, Hapus')
