@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\NaskahResource\Pages;
-use App\Models\Archive;
+use App\Filament\Resources\NaskahResource\Widgets\NaskahChart;
 use App\Models\Naskah;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Carbon\Carbon;
@@ -226,6 +226,18 @@ class NaskahResource extends Resource implements HasShieldPermissions
             'restore_any',
             'delete',
             'delete_any',
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            NaskahChart::class,
         ];
     }
 
